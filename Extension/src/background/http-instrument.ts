@@ -4,7 +4,7 @@ import { HttpPostParser, ParsedPostRequest } from "../lib/http-post-parser";
 import { PendingRequest } from "../lib/pending-request";
 import { PendingResponse } from "../lib/pending-response";
 import { boolToInt, escapeString, escapeUrl } from "../lib/string-utils";
-import { HttpRedirect, HttpRequest, HttpResponse } from "../schema";
+import { HttpRedirect, HttpRequest, HttpResponse, UrlClassification } from "../schema";
 import { WebRequestOnBeforeSendHeadersEventDetails } from "../types/browser-web-request-event-details";
 import ResourceType = browser.webRequest.ResourceType;
 import RequestFilter = browser.webRequest.RequestFilter;
@@ -14,11 +14,11 @@ import HttpHeaders = browser.webRequest.HttpHeaders;
 type SaveContentOption = boolean | string;
 
 /**
- * Note: Different parts of the desired information arrives in different events as per below:
+ * Note: Different parts of the desired information arrive in different events as per below:
  * request = headers in onBeforeSendHeaders + body in onBeforeRequest
- * response = headers in onCompleted + body via a onBeforeRequest filter
- * redirect = original request headers+body, followed by a onBeforeRedirect and then a new set of request headers+body and response headers+body
- * Docs: https://developer.mozilla.org/en-US/docs/User:wbamberg/webRequest.RequestDetails
+ * response = headers in onCompleted + body via an onBeforeRequest filter
+ * redirect = original request headers+body, followed by an onBeforeRedirect and then a new set of request headers+body and response headers+body
+ * Docs: https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest.RequestDetails
  */
 
 const allTypes: ResourceType[] = [
@@ -46,6 +46,28 @@ const allTypes: ResourceType[] = [
 
 export { allTypes };
 
+// Example classLegend
+const classLegend = [
+  { class_id: 1, class: "fingerprinting" },
+  { class_id: 2, class: "fingerprinting_content" },
+  { class_id: 3, class: "cryptomining" },
+  { class_id: 4, class: "cryptomining_content" },
+  { class_id: 5, class: "tracking_ad" },
+  { class_id: 6, class: "tracking_analytics" },
+  { class_id: 7, class: "tracking_social" },
+  { class_id: 8, class: "tracking_content" },
+  { class_id: 9, class: "any_basic_tracking" },
+  { class_id: 10, class: "any_strict_tracking" },
+  { class_id: 11, class: "any_social_tracking" },
+];
+
+
+// Helper function to get class_id from class name
+function getClassId(className: string): number | undefined {
+  const entry = classLegend.find((entry) => entry.class === className);
+  return entry ? entry.class_id : undefined;
+}
+
 export class HttpInstrument {
   private readonly dataReceiver: typeof import("../loggingdb");
   private pendingRequests: {
@@ -64,6 +86,9 @@ export class HttpInstrument {
     details: browser.webRequest._OnBeforeRedirectDetails,
   ) => void;
   private onCompletedListener: (
+    details: browser.webRequest._OnCompletedDetails,
+  ) => void;
+  private onUrlClassificationListener: (
     details: browser.webRequest._OnCompletedDetails,
   ) => void;
 
@@ -141,14 +166,14 @@ export class HttpInstrument {
       ["responseHeaders"],
     );
 
-    this.onCompletedListener = (details) => {
+    this.onCompletedListener = async (details) => {
       // Ignore requests made by extensions
       if (requestStemsFromExtension(details)) {
         return;
       }
       const pendingResponse = this.getPendingResponse(details.requestId);
       pendingResponse.resolveOnCompletedEventDetails(details);
-      this.onCompletedHandler(
+      await this.onCompletedHandler(
         details,
         crawlID,
         incrementedEventOrdinal(),
@@ -159,6 +184,20 @@ export class HttpInstrument {
       this.onCompletedListener,
       filter,
       ["responseHeaders"],
+    );
+
+    // New listener for urlClassification
+    this.onUrlClassificationListener = async (details) => {
+      // Ignore requests made by extensions
+      // if (requestStemsFromExtension(details)) {
+      //   return;
+      // }
+      await this.handleUrlClassification(details);
+    };
+    browser.webRequest.onCompleted.addListener(
+      this.onUrlClassificationListener,
+      filter,
+      ["responseHeaders"]
     );
   }
 
@@ -180,6 +219,9 @@ export class HttpInstrument {
     }
     if (this.onCompletedListener) {
       browser.webRequest.onCompleted.removeListener(this.onCompletedListener);
+    }
+    if (this.onUrlClassificationListener) {
+      browser.webRequest.onCompleted.removeListener(this.onUrlClassificationListener);
     }
   }
 
@@ -476,11 +518,11 @@ export class HttpInstrument {
     */
 
     // Save HTTP redirect events
-    // Events are saved to the `http_redirects` table
+    // Events are saved to the http_redirects table
 
     /*
     // TODO: Refactor to corresponding webext logic or discard
-    // Events are saved to the `http_redirects` table, and map the old
+    // Events are saved to the http_redirects table, and map the old
     // request/response channel id to the new request/response channel id.
     // Implementation based on: https://stackoverflow.com/a/11240627
     const oldNotifications = details.notificationCallbacks;
@@ -566,6 +608,44 @@ export class HttpInstrument {
 
     this.dataReceiver.saveRecord("http_redirects", httpRedirect);
   }
+
+  private async handleUrlClassification(details: browser.webRequest._OnCompletedDetails): Promise<void> {
+    const urlClassification = details.urlClassification;
+  
+    if (urlClassification) {
+      const { firstParty, thirdParty } = urlClassification;
+  
+      const firstPartyClassIds = firstParty.map(className => getClassId(className));
+      const thirdPartyClassIds = thirdParty.map(className => getClassId(className));
+  
+      firstPartyClassIds.forEach(classId => {
+        if (classId !== undefined) {
+          const classificationRecord: UrlClassification = {
+            request_id: Number(details.requestId),
+            class_id: classId,
+            status: 'firstParty',
+            time_stamp: new Date(details.timeStamp).toISOString(),
+          };
+          this.dataReceiver.saveRecord("urlclassification", classificationRecord);
+        }
+      });
+  
+      thirdPartyClassIds.forEach(classId => {
+        if (classId !== undefined) {
+          const classificationRecord: UrlClassification = {
+            request_id: Number(details.requestId),
+            class_id: classId,
+            status: 'thirdParty',
+            time_stamp: new Date(details.timeStamp).toISOString(),
+          };
+          this.dataReceiver.saveRecord("urlclassification", classificationRecord);
+        }
+      });
+    } else {
+      console.error('urlClassification is not defined in the details object');
+    }
+  }
+  
 
   /*
    * HTTP Response Handlers and Helper Functions
@@ -672,7 +752,7 @@ export class HttpInstrument {
     update.location = parsedHeaders.location;
 
     if (this.shouldSaveContent(saveContent, details.type)) {
-      this.logWithResponseBody(details, update);
+      await this.logWithResponseBody(details, update);
     } else {
       this.dataReceiver.saveRecord("http_responses", update);
     }

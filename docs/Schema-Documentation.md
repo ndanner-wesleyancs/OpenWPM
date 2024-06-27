@@ -219,4 +219,14 @@ update the description of the field here.
 | Column Name | Type   | nullable | Description |
 | ----------- | ------ | -------- | ----------- |
 | visit_id    | int64  | False    |             |
-| instance_id | uint32 | False    |
+| instance_id | uint32 | False    |             |
+
+## urlClassification
+
+| Column Name                | Type      | Nullable | Description |
+| -------------------------- | --------- | -------- | ----------- |
+| request_id                 | int64     | False    |             |
+| class_id                   | int64     | False    |             |
+| status                     | string    | False    |             |
+| time_stamp                 | timestamp | False    |             |
+| visit_id                   | int64     | False    |             |

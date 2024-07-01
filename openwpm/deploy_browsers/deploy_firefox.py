@@ -122,7 +122,7 @@ def deploy_firefox(
     configure_firefox.privacy(browser_params, fo)
 
     # Set various prefs to improve speed and eliminate traffic to Mozilla
-    configure_firefox.optimize_prefs(fo, browser_params)
+    configure_firefox.optimize_prefs(fo)
 
     # Intercept logging at the Selenium level and redirect it to the
     # main logger.

@@ -100,6 +100,8 @@ class BrowserParams(DataClassJsonMixin):
         default=None, metadata=DCJConfig(encoder=path_to_str, decoder=str_to_path)
     )
 
+    enable_safe_browsing: bool = False
+
     tmp_profile_dir: Path = field(
         default=Path(tempfile.gettempdir()),
         metadata=DCJConfig(encoder=path_to_str, decoder=str_to_path),

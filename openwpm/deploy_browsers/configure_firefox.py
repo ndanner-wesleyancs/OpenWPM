@@ -36,7 +36,7 @@ def privacy(browser_params: BrowserParams, fo: Options) -> None:
             "https://github.com/citp/OpenWPM/issues/101"
         )
 
-def optimize_prefs(fo: Options) -> None:
+def optimize_prefs(fo: Options, browser_params) -> None:
     """
     Disable various features and checks the browser will do on startup.
     Some of these (e.g. disabling the newtab page) are required to prevent
@@ -102,23 +102,27 @@ def optimize_prefs(fo: Options) -> None:
 
     # Disable Safebrowsing and other security features
     # that require on remote content
-    # if browser_params.tp_cookies.lower() == "etp":
-        # fo.set_preference("browser.safebrowsing.phishing.enabled", False)
-        # fo.set_preference("browser.safebrowsing.malware.enabled", False)
-        # fo.set_preference("browser.safebrowsing.downloads.enabled", False)
-        # fo.set_preference("browser.safebrowsing.downloads.remote.enabled", False)
-        # fo.set_preference("browser.safebrowsing.blockedURIs.enabled", False)
-        # fo.set_preference("browser.safebrowsing.provider.mozilla.gethashURL", "")
-        # fo.set_preference("browser.safebrowsing.provider.google.gethashURL", "")
-        # fo.set_preference("browser.safebrowsing.provider.google4.gethashURL", "")
-        # fo.set_preference("browser.safebrowsing.provider.mozilla.updateURL", "")
-        # fo.set_preference("browser.safebrowsing.provider.google.updateURL", "")
-        # fo.set_preference("browser.safebrowsing.provider.google4.updateURL", "")
-        # fo.set_preference("browser.safebrowsing.provider.mozilla.lists", "")  # TP
-        # fo.set_preference("browser.safebrowsing.provider.google.lists", "")  # TP
-        # fo.set_preference("browser.safebrowsing.provider.google4.lists", "")  # TP
-        # fo.set_preference("extensions.blocklist.enabled", False)  # extensions
-        # fo.set_preference("security.OCSP.enabled", 0)
+    if browser_params.enable_safe_browsing:
+        # Enable Safe Browsing
+        pass
+    else:
+        # Defaults to disable Safe Browsing
+        fo.set_preference("browser.safebrowsing.phishing.enabled", False)
+        fo.set_preference("browser.safebrowsing.malware.enabled", False)
+        fo.set_preference("browser.safebrowsing.downloads.enabled", False)
+        fo.set_preference("browser.safebrowsing.downloads.remote.enabled", False)
+        fo.set_preference("browser.safebrowsing.blockedURIs.enabled", False)
+        fo.set_preference("browser.safebrowsing.provider.mozilla.gethashURL", "")
+        fo.set_preference("browser.safebrowsing.provider.google.gethashURL", "")
+        fo.set_preference("browser.safebrowsing.provider.google4.gethashURL", "")
+        fo.set_preference("browser.safebrowsing.provider.mozilla.updateURL", "")
+        fo.set_preference("browser.safebrowsing.provider.google.updateURL", "")
+        fo.set_preference("browser.safebrowsing.provider.google4.updateURL", "")
+        fo.set_preference("browser.safebrowsing.provider.mozilla.lists", "")
+        fo.set_preference("browser.safebrowsing.provider.google.lists", "")
+        fo.set_preference("browser.safebrowsing.provider.google4.lists", "")
+        fo.set_preference("extensions.blocklist.enabled", False)
+        fo.set_preference("security.OCSP.enabled", 0)
 
     # Disable Content Decryption Module and OpenH264 related downloads
     fo.set_preference("media.gmp-manager.url", "")

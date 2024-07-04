@@ -79,6 +79,7 @@ for i in range(NUM_BROWSERS):
     browser_params[i].callstack_instrument = CALLSTACK_INSTRUMENT
     browser_params[i].js_instrument = JS_INSTRUMENT
     browser_params[i].js_instrument_settings = JS_INSTRUMENT_SETTINGS
+    browser_params[i].enable_safe_browsing = ENABLE_SAFE_BROWSING # Added
     if SAVE_CONTENT == "1":
         browser_params[i].save_content = True
     elif SAVE_CONTENT == "0":

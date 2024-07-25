@@ -244,3 +244,13 @@ fields = [
     pa.field("instance_id", pa.uint32(), nullable=False),
 ]
 PQ_SCHEMAS["dns_responses"] = pa.schema(fields)
+
+# url_classification
+fields = [
+    pa.field("request_id", pa.int64(), nullable=False),
+    pa.field("class_id", pa.int64(), nullable=False),
+    pa.field("status", pa.string(), nullable=False),
+    pa.field("time_stamp", pa.string(), nullable=False),
+    pa.field("visit_id", pa.int64(), nullable=False),
+]
+PQ_SCHEMAS["url_classification"] = pa.schema(fields)

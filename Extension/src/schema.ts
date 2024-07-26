@@ -188,3 +188,12 @@ export interface JavascriptCookieRecord extends JavascriptCookie {
   record_type?: "deleted" | "added-or-changed" | "manual-export";
   change_cause?: OnChangedCause;
 }
+
+export interface UrlClassification {
+  request_id: number;
+  class_id: number;
+  status: "firstParty" | "thirdParty";
+  time_stamp: string;
+  visit_id?: number;
+}
+

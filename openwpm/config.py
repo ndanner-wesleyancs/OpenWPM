@@ -1,6 +1,7 @@
 import tempfile
 from dataclasses import dataclass, field
 from json import JSONEncoder
+import os.path
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
@@ -144,6 +145,25 @@ class BrowserParams(DataClassJsonMixin):
     donottrack: bool = False
     tracking_protection: bool = False
     custom_params: Dict[Any, Any] = field(default_factory=lambda: {})
+
+    prefs_from_attrs : bool = True
+    """
+    If True, set cookie handling, do not track, and tracking protection
+    preferences according to `tp_cookies`, `donottrack`, and
+    `tracking_protection`, respectively.
+
+    The default duplicates the previous behaviour of OpenWPM.
+    """
+
+    prefs_files : List[str] = field(
+        default_factory=lambda: [
+            os.path.dirname(__file__) + "/deploy_browsers/legacy_ff_prefs.ini"
+        ]
+    )
+    """
+    List of preference files in INI format to use.  The default duplicates the
+    previous behavior of OpenWPM.
+    """
 
 
 @dataclass

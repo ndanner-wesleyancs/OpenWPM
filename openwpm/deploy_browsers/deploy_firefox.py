@@ -118,11 +118,17 @@ def deploy_firefox(
         # TODO restore detailed logging
         # fo.set_preference("extensions.@openwpm.sdk.console.logLevel", "all")
 
-    # Configure privacy settings
-    configure_firefox.privacy(browser_params, fo)
+    # # Configure privacy settings
+    # configure_firefox.privacy(browser_params, fo)
 
-    # Set various prefs to improve speed and eliminate traffic to Mozilla
-    configure_firefox.optimize_prefs(fo)
+    # # Set various prefs to improve speed and eliminate traffic to Mozilla
+    # configure_firefox.optimize_prefs(fo)
+
+    # Configure preferences
+    if browser_params.prefs_from_attrs:
+        configure_firefox.prefs_from_browser_params(browser_params, fo)
+
+    configure_firefox.load_prefs(browser_params.prefs_files, fo)
 
     # Intercept logging at the Selenium level and redirect it to the
     # main logger.

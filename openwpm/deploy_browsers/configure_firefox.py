@@ -1,5 +1,10 @@
 """ Set prefs and load extensions in Firefox """
 
+import configparser
+import functools
+import json
+from typing import List, Any
+
 from selenium.webdriver.firefox.options import Options
 
 from ..config import BrowserParams
@@ -156,3 +161,76 @@ def optimize_prefs(fo: Options) -> None:
     # Enable extensions and disable extension signing
     fo.set_preference("extensions.experiments.enabled", True)
     fo.set_preference("xpinstall.signatures.required", False)
+
+def prefs_from_browser_params(browser_params : BrowserParams,
+        fo : Options) -> None:
+    """
+    If browser_params.prefs_from_attrs = True, then set certain
+    preferences according to browser_params attributes.
+    """
+    # Turns on Do Not Track
+    if browser_params.donottrack:
+        fo.set_preference("privacy.donottrackheader.enabled", True)
+
+    # Sets the third party cookie setting
+    if browser_params.tp_cookies.lower() == "never":
+        fo.set_preference("network.cookie.cookieBehavior", 1)
+    elif browser_params.tp_cookies.lower() == "from_visited":
+        fo.set_preference("network.cookie.cookieBehavior", 3)
+    else:  # always allow third party cookies
+        fo.set_preference("network.cookie.cookieBehavior", 0)
+
+    if browser_params.tracking_protection:
+        raise RuntimeError(
+            "Firefox Tracking Protection is not currently "
+            "supported. See: "
+            "https://github.com/citp/OpenWPM/issues/101"
+        )
+
+def load_prefs(prefs_filenames : List[str], fo : Options) -> None:
+    """
+    Load preferences from the files in `prefs_filenames` in the order they are
+    listed (so preferences set in more than one file will be set to the value
+    defined by the last file).
+
+    Files may be in either TOML format (must have extension .toml) or
+    JavaScript (must have extension .js).  The former must not have any
+    toplevel tables/section, just a list of preferences and their values as
+    valid TOML.  The latter must have lines of the form
+    ```
+    user_pref(pref, val);
+    ```
+    as in the `prefs.js` file in the FF profile.
+    """
+    for prefs_filename in prefs_filenames:
+        # Read prefs file creating a fake toplevel section named prefs.
+        with open(prefs_filename, 'r') as f:
+            prefs_string = "[prefs]\n" + f.read()
+
+        # Use ConfigParser to parse the preferences; each preference value will
+        # be a string.
+        config = configparser.ConfigParser(inline_comment_prefixes="#")
+        config.optionxform = str
+        config.read_string(prefs_string)
+
+        # Create a string that is a valid JSON dictionary where the key-value
+        # pairs are the option-values in config, but with the quotes removed
+        # from the values.
+        prefs_str_vals = config.items("prefs")
+        prefs_json = functools.reduce(
+            lambda r, kv: "{}, \"{}\": {}".format(r, kv[0], kv[1]), 
+            prefs_str_vals, ""
+        )[1:]
+        prefs_json = "{ " + prefs_json + " }"
+
+        # Read the JSON dictionary back; json.load will do the conversion of
+        # the values.
+        prefs : dict[str, Any] = json.loads(prefs_json)
+
+        # Set the preferences.
+        for (pref, val) in prefs.items():
+            fo.set_preference(pref, val)
+
+    return
+
+

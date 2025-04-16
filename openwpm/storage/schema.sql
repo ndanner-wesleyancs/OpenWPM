@@ -246,3 +246,19 @@ CREATE TABLE IF NOT EXISTS dns_responses (
   is_TRR INTEGER, 
   time_stamp DATETIME NOT NULL
  );
+
+/* New tables */
+
+-- Table for URL classifications
+/*
+# URL Classification
+ */
+CREATE TABLE IF NOT EXISTS urlclassification (
+    request_id INTEGER NOT NULL,
+    class_id INTEGER NOT NULL,
+    status TEXT NOT NULL,
+    time_stamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    visit_id INTEGER NOT NULL,
+    FOREIGN KEY(visit_id) REFERENCES site_visits(visit_id)
+);
+

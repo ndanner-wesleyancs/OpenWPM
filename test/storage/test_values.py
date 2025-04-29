@@ -234,6 +234,16 @@ def generate_test_values() -> dt_test_values:
         "time_stamp": random_word(12),
     }
     test_values[TableName("dns_responses")] = fields
+    # urlClassification
+    fields = {
+        "request_id": random.randint(0, 2**63 - 1),
+        "class_id": random.randint(0, 2**31 - 1),
+        "status": random_word(12),
+        "time_stamp": random_word(12),
+        "visit_id": random.randint(0, 2**63 - 1),
+    }
+    test_values[TableName("urlClassification")] = fields
+    
     visit_id_set = set(
         d["visit_id"] for d in filter(lambda d: "visit_id" in d, test_values.values())
     )

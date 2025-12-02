@@ -175,6 +175,19 @@ def deploy_firefox(
         "BROWSER %i: OpenWPM Firefox extension loaded" % browser_params.browser_id
     )
 
+    # Install additional extensions
+    try:
+        more_extensions = browser_params.custom_params["extensions"]
+    except KeyError:
+        more_extensions = []
+    for ext_path in more_extensions:
+        ext_path = os.path.normpath(ext_path)
+        driver.install_addon(ext_path, temporary=True)
+        logger.debug(
+        "BROWSER %i: Additional extension %s loaded" % \
+                (browser_params.browser_id, ext_path)
+        )
+
     # set window size
     driver.set_window_size(*DEFAULT_SCREEN_RES)
 

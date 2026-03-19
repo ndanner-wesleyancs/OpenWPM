@@ -20,7 +20,7 @@ export class DnsInstrument {
     const requestStemsFromExtension = (details) => {
       return (
         details.originUrl &&
-        details.originUrl.indexOf("moz-extension://") > -1 &&
+        details.originUrl.includes("moz-extension://") &&
         details.originUrl.includes("fakeRequest")
       );
     };
@@ -57,19 +57,6 @@ export class DnsInstrument {
     return this.pendingResponses[requestId];
   }
 
-  private handleResolvedDnsData(dnsRecordObj, dataReceiver) {
-    // Curring the data returned by API call.
-    return function (record) {
-      // Get data from API call
-      dnsRecordObj.addresses = record.addresses.toString();
-      dnsRecordObj.canonical_name = record.canonicalName;
-      dnsRecordObj.is_TRR = record.isTRR;
-
-      // Send data to main OpenWPM data aggregator.
-      dataReceiver.saveRecord("dns_responses", dnsRecordObj);
-    };
-  }
-
   private async onCompleteDnsHandler(
     details: browser.webRequest._OnCompletedDetails,
     crawlID,
@@ -85,9 +72,13 @@ export class DnsInstrument {
     // Query DNS API
     const url = new URL(details.url);
     dnsRecord.hostname = url.hostname;
-    const dnsResolve = browser.dns.resolve(dnsRecord.hostname, [
+    const record = await browser.dns.resolve(dnsRecord.hostname, [
       "canonical_name",
     ]);
-    dnsResolve.then(this.handleResolvedDnsData(dnsRecord, this.dataReceiver));
+
+    dnsRecord.addresses = record.addresses.toString();
+    dnsRecord.canonical_name = record.canonicalName;
+    dnsRecord.is_TRR = record.isTRR;
+    this.dataReceiver.saveRecord("dns_responses", dnsRecord);
   }
 }

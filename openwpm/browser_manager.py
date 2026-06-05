@@ -1,3 +1,4 @@
+import datetime
 import errno
 import json
 import logging
@@ -497,6 +498,11 @@ class BrowserManagerHandle:
                     "error": error_text,
                     "traceback": tb,
                     "duration": int((time.time_ns() - t1) / 1000000),
+                    "dtg": datetime.datetime.now(
+                        tz=datetime.timezone.utc
+                    ).strftime(
+                        "%Y-%m-%dT%H:%M:%S.%fZ"
+                    )
                 },
             )
 

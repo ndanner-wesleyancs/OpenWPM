@@ -169,11 +169,13 @@ export interface DnsResolved {
   visit_id?: number;
   hostname: string;
   request_id: number;
+  redirect_url?: string;
   time_stamp: DateTime;
   addresses?: string;
   used_address?: string;
   canonical_name?: string;
   is_TRR?: string;
+  error?: string;
 }
 
 /**

@@ -1,4 +1,4 @@
-""" Set prefs and load extensions in Firefox """
+"""Set prefs and load extensions in Firefox"""
 
 import configparser
 import functools

@@ -51,6 +51,12 @@ def deploy_firefox(
     # https://github.com/openwpm/OpenWPM/issues/423#issuecomment-521018093
     fo.add_argument("-profile")
     fo.add_argument(str(browser_profile_path))
+    # Allow WebDriver to access the parent process and privileged Gecko APIs
+    # (e.g. switching to the chrome context). Firefox 138+ gates this behind an
+    # explicit launch flag; without it commands such as reading preferences via
+    # the chrome context fail with "System access is required".
+    # https://firefox-source-docs.mozilla.org/remote/Security.html
+    fo.add_argument("-remote-allow-system-access")
     assert browser_params.browser_id is not None
     if browser_params.seed_tar and not crash_recovery:
         logger.info(
@@ -88,12 +94,10 @@ def deploy_firefox(
             display.start()
             display_pid, display_port = display.pid, display.display
         except EasyProcessError:
-            raise RuntimeError(
-                "Xvfb could not be started. \
+            raise RuntimeError("Xvfb could not be started. \
                 Please ensure it's on your path. \
                 See www.X.org for full details. \
-                Commonly solved on ubuntu with `sudo apt install xvfb`"
-            )
+                Commonly solved on ubuntu with `sudo apt install xvfb`")
     # Must do this for all display modes,
     # because status_queue is read off no matter what.
     status_queue.put(("STATUS", "Display", (display_pid, display_port)))

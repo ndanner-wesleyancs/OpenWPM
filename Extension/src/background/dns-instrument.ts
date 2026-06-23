@@ -1,14 +1,22 @@
-import { PendingResponse } from "../lib/pending-response";
 import { DnsResolved } from "../schema";
 import { allTypes } from "./http-instrument";
+import {
+  WebRequestOnErrorOccurredDetails,
+  WebRequestOnHeadersReceivedDetails,
+} from "../types/browser-web-request-event-details";
 import RequestFilter = browser.webRequest.RequestFilter;
+
+// Firefox error strings that indicate DNS resolution failure.
+// Note: NS_ERROR_NET_TIMEOUT is intentionally excluded — it is a generic
+// network timeout (TCP connect, TLS handshake, HTTP read, etc.), not
+// DNS-specific. DNS timeouts in Firefox surface as NS_ERROR_UNKNOWN_HOST
+// when the resolver gives up; there is no dedicated DNS timeout error.
+const DNS_ERROR_STRINGS = ["NS_ERROR_UNKNOWN_HOST"];
 
 export class DnsInstrument {
   private readonly dataReceiver;
-  private onCompleteListener;
-  private pendingResponses: {
-    [requestId: number]: PendingResponse;
-  } = {};
+  private onHeadersReceivedListener;
+  private onErrorOccurredListener;
 
   constructor(dataReceiver) {
     this.dataReceiver = dataReceiver;
@@ -28,37 +36,62 @@ export class DnsInstrument {
     /*
      * Attach handlers to event listeners
      */
-    this.onCompleteListener = (
-      details: browser.webRequest._OnCompletedDetails,
+    this.onHeadersReceivedListener = (
+      details: WebRequestOnHeadersReceivedDetails,
     ) => {
       // Ignore requests made by extensions
       if (requestStemsFromExtension(details)) {
         return;
       }
-      const pendingResponse = this.getPendingResponse(details.requestId);
-      pendingResponse.resolveOnCompletedEventDetails(details);
 
-      this.onCompleteDnsHandler(details, crawlID);
+      this.onHeadersReceivedDnsHandler(details, crawlID);
     };
 
-    browser.webRequest.onCompleted.addListener(this.onCompleteListener, filter);
+    browser.webRequest.onHeadersReceived.addListener(
+      this.onHeadersReceivedListener,
+      filter,
+    );
+
+    this.onErrorOccurredListener = (
+      details: WebRequestOnErrorOccurredDetails,
+    ) => {
+      // Ignore requests made by extensions
+      if (requestStemsFromExtension(details)) {
+        return;
+      }
+
+      // Only capture DNS-related errors
+      const isDnsError = DNS_ERROR_STRINGS.some((errStr) =>
+        details.error.includes(errStr),
+      );
+      if (!isDnsError) {
+        return;
+      }
+
+      this.onErrorOccurredDnsHandler(details, crawlID);
+    };
+
+    browser.webRequest.onErrorOccurred.addListener(
+      this.onErrorOccurredListener,
+      filter,
+    );
   }
 
   public cleanup() {
-    if (this.onCompleteListener) {
-      browser.webRequest.onCompleted.removeListener(this.onCompleteListener);
+    if (this.onHeadersReceivedListener) {
+      browser.webRequest.onHeadersReceived.removeListener(
+        this.onHeadersReceivedListener,
+      );
+    }
+    if (this.onErrorOccurredListener) {
+      browser.webRequest.onErrorOccurred.removeListener(
+        this.onErrorOccurredListener,
+      );
     }
   }
 
-  private getPendingResponse(requestId): PendingResponse {
-    if (!this.pendingResponses[requestId]) {
-      this.pendingResponses[requestId] = new PendingResponse();
-    }
-    return this.pendingResponses[requestId];
-  }
-
-  private async onCompleteDnsHandler(
-    details: browser.webRequest._OnCompletedDetails,
+  private async onHeadersReceivedDnsHandler(
+    details: WebRequestOnHeadersReceivedDetails,
     crawlID,
   ) {
     // Create and populate DnsResolve object
@@ -66,6 +99,7 @@ export class DnsInstrument {
     dnsRecord.browser_id = crawlID;
     dnsRecord.request_id = Number(details.requestId);
     dnsRecord.used_address = details.ip;
+    dnsRecord.redirect_url = details.url;
     const currentTime = new Date(details.timeStamp);
     dnsRecord.time_stamp = currentTime.toISOString();
 
@@ -79,6 +113,24 @@ export class DnsInstrument {
     dnsRecord.addresses = record.addresses.toString();
     dnsRecord.canonical_name = record.canonicalName;
     dnsRecord.is_TRR = record.isTRR;
+    this.dataReceiver.saveRecord("dns_responses", dnsRecord);
+  }
+
+  private onErrorOccurredDnsHandler(
+    details: WebRequestOnErrorOccurredDetails,
+    crawlID,
+  ) {
+    const dnsRecord = {} as DnsResolved;
+    dnsRecord.browser_id = crawlID;
+    dnsRecord.request_id = Number(details.requestId);
+    dnsRecord.redirect_url = details.url;
+    const currentTime = new Date(details.timeStamp);
+    dnsRecord.time_stamp = currentTime.toISOString();
+
+    const url = new URL(details.url);
+    dnsRecord.hostname = url.hostname;
+    dnsRecord.error = details.error;
+
     this.dataReceiver.saveRecord("dns_responses", dnsRecord);
   }
 }

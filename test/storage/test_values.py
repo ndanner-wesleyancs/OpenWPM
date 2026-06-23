@@ -1,4 +1,4 @@
-""" This file should contain one entry for every table
+"""This file should contain one entry for every table
 so that we can test storing and loading for every single entry
 for every structured storage provider.
 
@@ -228,9 +228,12 @@ def generate_test_values() -> dt_test_values:
         "browser_id": random.randint(0, 2**31 - 1),
         "visit_id": random.randint(0, 2**63 - 1),
         "hostname": random_word(12),
+        "redirect_url": random_word(12),
         "addresses": random_word(12),
+        "used_address": random_word(12),
         "canonical_name": random_word(12),
         "is_TRR": random.choice([True, False]),
+        "error": random_word(12),
         "time_stamp": random_word(12),
     }
     test_values[TableName("dns_responses")] = fields

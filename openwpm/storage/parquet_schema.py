@@ -237,9 +237,12 @@ fields = [
     pa.field("browser_id", pa.uint32(), nullable=False),
     pa.field("visit_id", pa.int64(), nullable=False),
     pa.field("hostname", pa.string()),
+    pa.field("redirect_url", pa.string()),
     pa.field("addresses", pa.string()),
+    pa.field("used_address", pa.string()),
     pa.field("canonical_name", pa.string()),
     pa.field("is_TRR", pa.bool_()),
+    pa.field("error", pa.string()),
     pa.field("time_stamp", pa.string(), nullable=False),
     pa.field("instance_id", pa.uint32(), nullable=False),
 ]

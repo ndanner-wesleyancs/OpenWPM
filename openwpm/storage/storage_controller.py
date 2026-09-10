@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import datetime
 import logging
 import queue
 import random
@@ -475,6 +476,11 @@ class StorageControllerHandle:
                 "manager_params": manager_params.to_json(),
                 "openwpm_version": openwpm_version,
                 "browser_version": browser_version,
+                "start_time": datetime.datetime.now(
+                    tz=datetime.timezone.utc
+                ).strftime(
+                    "%Y-%m-%dT%H:%M:%S.%fZ"
+                )
             },
         )
         # Record browser details for each browser
@@ -486,6 +492,11 @@ class StorageControllerHandle:
                     "browser_id": browser_param.browser_id,
                     "task_id": task_id,
                     "browser_params": browser_param.to_json(),
+                    "start_time": datetime.datetime.now(
+                        tz=datetime.timezone.utc
+                    ).strftime(
+                        "%Y-%m-%dT%H:%M:%S.%fZ"
+                    )
                 },
             )
         sock.finalize_visit_id(INVALID_VISIT_ID, success=True)
